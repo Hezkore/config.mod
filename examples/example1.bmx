@@ -5,7 +5,7 @@ Import hez.config
 
 Local myConfig:TConfig = New TConfig
 
-myConfig.Register("Some test variable", "general/test", "gtest", "My default value")
+myConfig.Register("Some test variable", "general/test", "g_test", "My default value")
 
 Print( myConfig.GetString("general/test") )
 

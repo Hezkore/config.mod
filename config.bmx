@@ -25,14 +25,17 @@ Type TConfig
 	Global Instances:TObjectList = New TObjectList
 	
 	Field Variables:TStringMap = New TStringMap
+	Field VariablesArgNames:TStringMap = New TStringMap
 	
 	Method New()
 		Self.Instances.AddLast(Self)
 	EndMethod
 	
 	Method Register(description:String, path:String, argument:String, value:String)
-		Self.Variables.Insert( path, New TConfigVariable(..
-			description, path, argument, value) )
+		Local variable:TConfigVariable = New TConfigVariable(..
+			description, path, argument, value)
+		Self.Variables.Insert( path, variable )
+		Self.VariablesArgNames.Insert( argument, variable )
 	EndMethod
 	
 	Method Set(path:String, value:String)
@@ -41,6 +44,10 @@ Type TConfig
 	
 	Method Get:TConfigVariable(path:String)
 		Return TConfigVariable(Self.Variables.ValueForKey( path ))
+	EndMethod
+	
+	Method GetByArg:TConfigVariable(path:String)
+		Return TConfigVariable(Self.VariablesArgNames.ValueForKey( path ))
 	EndMethod
 	
 	Method GetString:String(path:String)
