@@ -24,6 +24,8 @@ Type TConfig
 	
 	Global Instances:TObjectList = New TObjectList
 	
+	Field OutPath:String
+	Field Stream:TStream
 	Field Variables:TStringMap = New TStringMap
 	Field VariablesArgNames:TStringMap = New TStringMap
 	
@@ -31,11 +33,19 @@ Type TConfig
 		Self.Instances.AddLast(Self)
 	EndMethod
 	
-	Method Register(description:String, path:String, argument:String, value:String)
+	Method SetOutPath(path:String)
+		Self.OutPath = path
+	EndMethod
+	
+	Method Load(path:String)
+	EndMethod
+	
+	Method Register:TConfigVariable(description:String, path:String, argument:String, value:String = "")
 		Local variable:TConfigVariable = New TConfigVariable(..
 			description, path, argument, value)
 		Self.Variables.Insert( path, variable )
-		Self.VariablesArgNames.Insert( argument, variable )
+		Self.VariablesArgNames.Insert(argument, variable)
+		Return variable
 	EndMethod
 	
 	Method Set(path:String, value:String)
@@ -60,6 +70,13 @@ Type TConfig
 	
 	Method GetFloat:Float(path:String)
 		Return Float(Self.Get(path).Value)
+	EndMethod
+	
+	Method GetBool:Int(path:String)
+		Local value:String = Self.Get(path).Value
+		If Int(value) > 0 Or value.ToLower() = "true" ..
+			Return True
+		Return False
 	EndMethod
 EndType
 
