@@ -22,10 +22,10 @@ Import brl.collections
 
 Type TConfig
 	
+	Const NoCategory:String = "default"
 	Global Instances:TObjectList = New TObjectList
 	
-	Field OutPath:String
-	Field Stream:TStream
+	Field Path:String
 	Field Variables:TStringMap = New TStringMap
 	Field VariablesArgNames:TStringMap = New TStringMap
 	
@@ -33,11 +33,65 @@ Type TConfig
 		Self.Instances.AddLast(Self)
 	EndMethod
 	
-	Method SetOutPath(path:String)
-		Self.OutPath = path
+	Method Load(path:String = Null)
+		If Not path path = Self.Path
+		Local stream:TStream = OpenStream(path)
+		If Not stream Return
+		
+		Local line:String
+		Local category:String = Self.NoCategory
+		Local lineSplit:String[]
+		Local key:String
+		Local value:String
+		Local lastVariable:TConfigVariable
+		While Not EOF(stream)
+			line = stream.ReadLine().Trim()
+			
+			If line.StartsWith("[") Then
+				category = line[1..]
+				If category.EndsWith("]") ..
+					category = category[..category.Length - 1]
+			Else
+				If line.Contains("=") Then
+					lineSplit = line.Split("=")
+					key = lineSplit[0].Trim()
+					value = lineSplit[1].Trim()
+				Else
+					key = line.Trim()
+				EndIf
+				If Not key Continue
+				lastVariable = Self.Get(category + "/" + key)
+				If lastVariable Then lastVariable.Value = value
+			EndIf
+		Wend
+		
+		stream.Close()
 	EndMethod
 	
-	Method Load(path:String)
+	Method Apply(path:String = Null)
+		If Not path path = Self.Path
+		Local stream:TStream = WriteStream(path)
+		If Not stream Return
+		
+		Local category:String
+		Local keySplit:String[]
+		Local key:String
+		Local value:String
+		For Local rawKey:String = EachIn Self.Variables.Keys()
+			If rawKey.Contains("/") Then
+				keySplit = rawKey.Split("/")
+				category = keySplit[0]
+				key = keySplit[1]
+			Else
+				category = Self.NoCategory
+				key = rawKey
+			EndIf
+			value = TConfigVariable(Self.Variables.ValueForKey(rawKey)).Value
+			
+			Print "["+category+"]"+key + "="+value
+		Next
+		
+		stream.Close()
 	EndMethod
 	
 	Method Register:TConfigVariable(description:String, path:String, argument:String, value:String = "")
