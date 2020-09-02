@@ -23,81 +23,74 @@ Import brl.collections
 
 Type TConfig
 	
-	Const NoCategory:String = "default"
-	Global Instances:TObjectList = New TObjectList
-	
 	Field Path:String
 	Field Categories:TStringMap = New TStringMap
 	Field VariablesArgNames:TStringMap = New TStringMap
-	
-	Method New()
-		Self.Instances.AddLast(Self)
-	EndMethod
+	Field LastCategory:TConfigCategory
+	Field LastVariable:TConfigVariable
+	Field LastByArgVariable:TConfigVariable
 	
 	Method Load(path:String = Null)
-		rem
 		If Not path path = Self.Path
-		Local stream:TStream = OpenStream(path)
+		Local stream:TStream = OpenStream(path, True, False)
 		If Not stream Return
 		
 		Local line:String
-		Local category:String = Self.NoCategory
+		Local categoryName:String
+		Local category:TConfigCategory
 		Local lineSplit:String[]
-		Local key:String
-		Local value:String
-		Local lastVariable:TConfigVariable
+		Local variableName:String
+		Local variable:TConfigVariable
+		Local variableValue:String
+		
 		While Not EOF(stream)
 			line = stream.ReadLine().Trim()
+			If line.StartsWith(";") Continue ' Commend
 			
 			If line.StartsWith("[") Then
-				category = line[1..]
-				If category.EndsWith("]") ..
-					category = category[..category.Length - 1]
+				categoryName = line[1..]
+				If categoryName.EndsWith("]") ..
+					categoryName = categoryName[..categoryName.Length - 1]
+				category = Self.Get(categoryName)
 			Else
+				If Not category Continue
 				If line.Contains("=") Then
 					lineSplit = line.Split("=")
-					key = lineSplit[0].Trim()
-					value = lineSplit[1].Trim()
+					variableName = lineSplit[0].Trim()
+					variableValue = lineSplit[1].Trim()
 				Else
-					key = line.Trim()
+					variableName = line.Trim()
 				EndIf
-				If Not key Continue
-				lastVariable = Self.Get(category + "/" + key)
-				If lastVariable Then lastVariable.Value = value
+				If Not variableName Continue
+				variable = category.Get(variableName)
+				If Not variable Continue
+				variable.Value = variableValue
 			EndIf
 		Wend
 		
 		stream.Close()
-		endrem
 	EndMethod
 	
 	Method Apply(path:String = Null)
-		rem
 		If Not path path = Self.Path
 		Local stream:TStream = WriteStream(path)
 		If Not stream Return
 		
-		Local category:String
-		Local keySplit:String[]
-		Local key:String
-		Local value:String
-		For Local rawKey:String = EachIn Self.Variables.Keys()
-			If rawKey.Contains("/") Then
-				keySplit = rawKey.Split("/")
-				category = keySplit[0]
-				key = keySplit[1]
-			Else
-				category = Self.NoCategory
-				key = rawKey
-			EndIf
-			' TODO: There's got to be a way to get the key and value at the same time
-			value = TConfigVariable(Self.Variables.ValueForKey(rawKey)).Value
-			
-			'Print "["+category+"]"+key + "="+value
+		Local categoryName:String
+		Local category:TConfigCategory
+		Local variableName:String
+		Local variable:TConfigVariable
+		
+		For categoryName = EachIn Self.Categories.Keys()
+			category = Self.Get(categoryName)
+			stream.WriteLine("[" + category.Name + "]")
+			For variableName = EachIn category.Variables.Keys()
+				variable = category.Get(variableName)
+				stream.WriteLine(variable.Name + "=" + variable.Value)
+			Next
 		Next
 		
 		stream.Close()
-		endrem
 	EndMethod
 	
 	Method Register:TConfigVariable(description:String, category:String, variable:String, argument:String, value:String = "")
@@ -115,16 +108,36 @@ Type TConfig
 		Return vari
 	EndMethod
 	
+	Method SetCache(category:String, variable:String)
+		If Not Self.LastCategory Or Self.LastCategory.Name <> category Then
+			Self.LastCategory = TConfigCategory(Self.Categories.ValueForKey(category))
+		EndIf
+		If Not Self.LastVariable Or Self.LastVariable.Name <> variable Then
+			Self.LastVariable = Self.LastCategory.Get(variable)
+		EndIf
+	EndMethod
+	
+	Method SetCache(category:String)
+		If Not Self.LastCategory Or Self.LastCategory.Name <> category Then
+			Self.LastCategory = TConfigCategory(Self.Categories.ValueForKey(category))
+		EndIf
+	EndMethod
+	
 	Method Set(category:String, variable:String, value:String)
-		Self.Get(category).Get(variable).Value = value
+		Self.SetCache(category, variable)
+		Self.LastVariable.Value = value
 	EndMethod
 	
 	Method Get:TConfigCategory(category:String)
-		Return TConfigCategory(Self.Categories.ValueForKey(category))
+		Self.SetCache(category)
+		Return Self.LastCategory
 	EndMethod
 	
 	Method GetByArg:TConfigVariable(arg:String)
-		Return TConfigVariable(Self.VariablesArgNames.ValueForKey(arg))
+		If Not Self.LastByArgVariable Or Self.LastByArgVariable.Argument <> arg Then
+			Self.LastByArgVariable = TConfigVariable(Self.VariablesArgNames.ValueForKey(arg))
+		EndIf
+		Return Self.LastByArgVariable
 	EndMethod
 	
 	Method GetString:String(category:String, variable:String)
@@ -151,13 +164,17 @@ Type TConfigCategory
 	
 	Field Name:String
 	Field Variables:TStringMap = New TStringMap
+	Field LastVariable:TConfigVariable
 	
 	Method New(name:String)
 		Self.Name = name
 	EndMethod
 	
 	Method Get:TConfigVariable(variable:String)
-		Return TConfigVariable(Self.Variables.ValueForKey(variable))
+		If Not Self.LastVariable Or Self.LastVariable.Name <> variable Then
+			Self.LastVariable = TConfigVariable(Self.Variables.ValueForKey(variable))
+		EndIf
+		Return Self.LastVariable
 	EndMethod
 EndType
 
