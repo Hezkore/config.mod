@@ -1,6 +1,7 @@
 SuperStrict
 
 Framework brl.standardio
+Import brl.linkedlist
 
 rem
 bbdoc: Configuration
@@ -26,7 +27,7 @@ Type TConfig
 	Global Instances:TObjectList = New TObjectList
 	
 	Field Path:String
-	Field Variables:TStringMap = New TStringMap
+	Field Categories:TStringMap = New TStringMap
 	Field VariablesArgNames:TStringMap = New TStringMap
 	
 	Method New()
@@ -34,6 +35,7 @@ Type TConfig
 	EndMethod
 	
 	Method Load(path:String = Null)
+		rem
 		If Not path path = Self.Path
 		Local stream:TStream = OpenStream(path)
 		If Not stream Return
@@ -66,9 +68,11 @@ Type TConfig
 		Wend
 		
 		stream.Close()
+		endrem
 	EndMethod
 	
 	Method Apply(path:String = Null)
+		rem
 		If Not path path = Self.Path
 		Local stream:TStream = WriteStream(path)
 		If Not stream Return
@@ -86,64 +90,89 @@ Type TConfig
 				category = Self.NoCategory
 				key = rawKey
 			EndIf
+			' TODO: There's got to be a way to get the key and value at the same time
 			value = TConfigVariable(Self.Variables.ValueForKey(rawKey)).Value
 			
-			Print "["+category+"]"+key + "="+value
+			'Print "["+category+"]"+key + "="+value
 		Next
 		
 		stream.Close()
+		endrem
 	EndMethod
 	
-	Method Register:TConfigVariable(description:String, path:String, argument:String, value:String = "")
-		Local variable:TConfigVariable = New TConfigVariable(..
-			description, path, argument, value)
-		Self.Variables.Insert( path, variable )
-		Self.VariablesArgNames.Insert(argument, variable)
-		Return variable
+	Method Register:TConfigVariable(description:String, category:String, variable:String, argument:String, value:String = "")
+		Local cat:TConfigCategory = Self.Get(category)
+		If Not cat Then
+			cat = New TConfigCategory(category)
+			Self.Categories.Insert(category,cat)
+		EndIf
+		
+		Local vari:TConfigVariable = New TConfigVariable(..
+			description, category, variable, argument, value)
+		
+		cat.Variables.Insert(variable, vari)
+		Self.VariablesArgNames.Insert(argument, vari)
+		Return vari
 	EndMethod
 	
-	Method Set(path:String, value:String)
-		Self.Get(path).Value = value
+	Method Set(category:String, variable:String, value:String)
+		Self.Get(category).Get(variable).Value = value
 	EndMethod
 	
-	Method Get:TConfigVariable(path:String)
-		Return TConfigVariable(Self.Variables.ValueForKey( path ))
+	Method Get:TConfigCategory(category:String)
+		Return TConfigCategory(Self.Categories.ValueForKey(category))
 	EndMethod
 	
-	Method GetByArg:TConfigVariable(path:String)
-		Return TConfigVariable(Self.VariablesArgNames.ValueForKey( path ))
+	Method GetByArg:TConfigVariable(arg:String)
+		Return TConfigVariable(Self.VariablesArgNames.ValueForKey(arg))
 	EndMethod
 	
-	Method GetString:String(path:String)
-		Return Self.Get(path).Value
+	Method GetString:String(category:String, variable:String)
+		Return Self.Get(category).Get(variable).Value
 	EndMethod
 	
-	Method GetInt:Int(path:String)
-		Return Int(Self.Get(path).Value)
+	Method GetInt:Int(category:String, variable:String)
+		Return Int(Self.Get(category).Get(variable).Value)
 	EndMethod
 	
-	Method GetFloat:Float(path:String)
-		Return Float(Self.Get(path).Value)
+	Method GetFloat:Float(category:String, variable:String)
+		Return Float(Self.Get(category).Get(variable).Value)
 	EndMethod
 	
-	Method GetBool:Int(path:String)
-		Local value:String = Self.Get(path).Value
+	Method GetBool:Int(category:String, variable:String)
+		Local value:String = Self.Get(category).Get(variable).Value
 		If Int(value) > 0 Or value.ToLower() = "true" ..
 			Return True
 		Return False
 	EndMethod
 EndType
 
+Type TConfigCategory
+	
+	Field Name:String
+	Field Variables:TStringMap = New TStringMap
+	
+	Method New(name:String)
+		Self.Name = name
+	EndMethod
+	
+	Method Get:TConfigVariable(variable:String)
+		Return TConfigVariable(Self.Variables.ValueForKey(variable))
+	EndMethod
+EndType
+
 Type TConfigVariable
 	
-	Field Value:String
-	Field Path:String
 	Field Description:String
+	Field Category:String
+	Field Name:String
 	Field Argument:String
+	Field Value:String
 	
-	Method New(description:String, path:String, argument:String, value:String)
+	Method New(description:String, category:String, name:String, argument:String, value:String)
 		Self.Description = description
-		Self.Path = path
+		Self.Category = category
+		Self.Name = name
 		Self.Argument = argument
 		Self.Value = value
 	EndMethod
