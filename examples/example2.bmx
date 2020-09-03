@@ -1,4 +1,4 @@
-' Load and write configuration file
+' Load and Save configuration file
 
 SuperStrict
 

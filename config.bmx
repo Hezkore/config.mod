@@ -71,6 +71,21 @@ Type TConfig
 		stream.Close()
 	EndMethod
 	
+	Method LoadArgs(args:String[] = [])
+		If Not args args = AppArgs[1..] ' Strip dir
+		If Not args Return
+		
+		Local lastVariable:TConfigVariable
+		For Local arg:String = EachIn args
+			If arg.StartsWith("-") Then
+				lastVariable = Self.GetByArg(arg[1..])
+				If lastVariable lastVariable.Value = True
+			ElseIf lastVariable
+				lastVariable.value = arg
+			EndIf
+		Next
+	EndMethod
+	
 	Method Apply(path:String = Null)
 		If Not path path = Self.Path
 		Local stream:TStream = WriteStream(path)
@@ -86,14 +101,15 @@ Type TConfig
 			stream.WriteLine("[" + category.Name + "]")
 			For variableName = EachIn category.Variables.Keys()
 				variable = category.Get(variableName)
-				stream.WriteLine(variable.Name + "=" + variable.Value)
+				If variable.Save ..
+					stream.WriteLine(variable.Name + "=" + variable.Value)
 			Next
 		Next
 		
 		stream.Close()
 	EndMethod
 	
-	Method Register:TConfigVariable(description:String, category:String, variable:String, argument:String, value:String = "")
+	Method Register:TConfigVariable(description:String, category:String, variable:String, argument:String, value:String = "", save:Int = False)
 		Local cat:TConfigCategory = Self.Get(category)
 		If Not cat Then
 			cat = New TConfigCategory(category)
@@ -101,7 +117,7 @@ Type TConfig
 		EndIf
 		
 		Local vari:TConfigVariable = New TConfigVariable(..
-			description, category, variable, argument, value)
+			description, category, variable, argument, value, save)
 		
 		cat.Variables.Insert(variable, vari)
 		Self.VariablesArgNames.Insert(argument, vari)
@@ -185,12 +201,14 @@ Type TConfigVariable
 	Field Name:String
 	Field Argument:String
 	Field Value:String
+	Field Save:Int = True
 	
-	Method New(description:String, category:String, name:String, argument:String, value:String)
+	Method New(description:String, category:String, name:String, argument:String, value:String, save:Int = True)
 		Self.Description = description
 		Self.Category = category
 		Self.Name = name
 		Self.Argument = argument
 		Self.Value = value
+		Self.Save = save
 	EndMethod
 EndType
