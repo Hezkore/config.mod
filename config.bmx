@@ -29,11 +29,21 @@ Type TConfig
 	Field LastCategory:TConfigCategory
 	Field LastVariable:TConfigVariable
 	Field LastByArgVariable:TConfigVariable
+	Field OnWarning(message:String) = OnWarningDefault
 	
-	Method Load(path:String = Null)
+	Function OnWarningDefault(message:String)
+		Print(message)
+	EndFunction
+	
+	Method Load:Int(path:String = Null)
 		If Not path path = Self.Path
+		If Not path Return False
+		
 		Local stream:TStream = OpenStream(path, True, False)
-		If Not stream Return
+		If Not stream Then
+			Self.OnWarning("Unable to load ~q"+path+"~q")
+			Return False
+		EndIf
 		
 		Local line:String
 		Local categoryName:String
@@ -69,6 +79,7 @@ Type TConfig
 		Wend
 		
 		stream.Close()
+		Return True
 	EndMethod
 	
 	Method LoadArgs(args:String[] = [])
@@ -86,10 +97,13 @@ Type TConfig
 		Next
 	EndMethod
 	
-	Method Apply(path:String = Null)
+	Method Apply:Int(path:String = Null)
 		If Not path path = Self.Path
 		Local stream:TStream = WriteStream(path)
-		If Not stream Return
+		If Not stream Then
+			Self.OnWarning("Unable to write ~q"+path+"~q")
+			Return False
+		EndIf
 		
 		Local categoryName:String
 		Local category:TConfigCategory
@@ -107,6 +121,7 @@ Type TConfig
 		Next
 		
 		stream.Close()
+		Return True
 	EndMethod
 	
 	Method Register:TConfigVariable(description:String, category:String, variable:String, argument:String, value:String = "", save:Int = False)
